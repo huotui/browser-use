@@ -85,6 +85,12 @@ bu_latest: 'BaseChatModel'
 bu_1_0: 'BaseChatModel'
 bu_2_0: 'BaseChatModel'
 
+# Local LLM models (compatible with OpenAI API format)
+local_qwen3_6_35b: 'BaseChatModel'
+local_qwen3_6_27b: 'BaseChatModel'
+local_nemotron_3_nano_omni: 'BaseChatModel'
+local_gemma_4_26b: 'BaseChatModel'
+
 
 def get_llm_by_name(model_name: str):
 	"""
@@ -123,59 +129,79 @@ def get_llm_by_name(model_name: str):
 	provider = parts[0]
 	model_part = parts[1]
 
-	# Convert underscores back to dots/dashes for actual model names
-	if 'gpt_4_1_mini' in model_part:
-		model = model_part.replace('gpt_4_1_mini', 'gpt-4.1-mini')
-	elif 'gpt_4o_mini' in model_part:
-		model = model_part.replace('gpt_4o_mini', 'gpt-4o-mini')
-	elif 'gpt_4o' in model_part:
-		model = model_part.replace('gpt_4o', 'gpt-4o')
-	elif 'gemini_2_0' in model_part:
-		model = model_part.replace('gemini_2_0', 'gemini-2.0').replace('_', '-')
-	elif 'gemini_2_5' in model_part:
-		model = model_part.replace('gemini_2_5', 'gemini-2.5').replace('_', '-')
-	elif 'llama3_1' in model_part:
-		model = model_part.replace('llama3_1', 'llama3.1').replace('_', '-')
-	elif 'llama3_3' in model_part:
-		model = model_part.replace('llama3_3', 'llama-3.3').replace('_', '-')
-	elif 'llama_4_scout' in model_part:
-		model = model_part.replace('llama_4_scout', 'llama-4-scout').replace('_', '-')
-	elif 'llama_4_maverick' in model_part:
-		model = model_part.replace('llama_4_maverick', 'llama-4-maverick').replace('_', '-')
-	elif 'gpt_oss_120b' in model_part:
-		model = model_part.replace('gpt_oss_120b', 'gpt-oss-120b')
-	elif 'qwen_3_32b' in model_part:
-		model = model_part.replace('qwen_3_32b', 'qwen-3-32b')
-	elif 'qwen_3_235b_a22b_instruct' in model_part:
-		if model_part.endswith('_2507'):
-			model = model_part.replace('qwen_3_235b_a22b_instruct_2507', 'qwen-3-235b-a22b-instruct-2507')
-		else:
-			model = model_part.replace('qwen_3_235b_a22b_instruct', 'qwen-3-235b-a22b-instruct-2507')
-	elif 'qwen_3_235b_a22b_thinking' in model_part:
-		if model_part.endswith('_2507'):
-			model = model_part.replace('qwen_3_235b_a22b_thinking_2507', 'qwen-3-235b-a22b-thinking-2507')
-		else:
-			model = model_part.replace('qwen_3_235b_a22b_thinking', 'qwen-3-235b-a22b-thinking-2507')
-	elif 'qwen_3_coder_480b' in model_part:
-		model = model_part.replace('qwen_3_coder_480b', 'qwen-3-coder-480b')
-	else:
-		model = model_part.replace('_', '-')
-
 	# OpenAI Models
 	if provider == 'openai':
-		api_key = os.getenv('OPENAI_API_KEY')
-		return ChatOpenAI(model=model, api_key=api_key)
+		# Convert underscores back to dots/dashes for actual model names
+		if 'gpt_4_1_mini' in model_part:
+			model = model_part.replace('gpt_4_1_mini', 'gpt-4.1-mini')
+		elif 'gpt_4o_mini' in model_part:
+			model = model_part.replace('gpt_4o_mini', 'gpt-4o-mini')
+		elif 'gpt_4o' in model_part:
+			model = model_part.replace('gpt_4o', 'gpt-4o')
+		elif 'gpt_5' in model_part:
+			model = model_part.replace('gpt_5', 'gpt-5').replace('_', '-')
+		elif 'o1_pro' in model_part:
+			model = model_part.replace('o1_pro', 'o1-pro')
+		elif 'o1_mini' in model_part:
+			model = model_part.replace('o1_mini', 'o1-mini')
+		elif 'o1' in model_part:
+			model = model_part.replace('o1', 'o1')
+		elif 'o3_pro' in model_part:
+			model = model_part.replace('o3_pro', 'o3-pro')
+		elif 'o3_mini' in model_part:
+			model = model_part.replace('o3_mini', 'o3-mini')
+		elif 'o3' in model_part:
+			model = model_part.replace('o3', 'o3')
+		elif 'o4_mini' in model_part:
+			model = model_part.replace('o4_mini', 'o4-mini')
+		else:
+			model = model_part.replace('_', '-')
+		
+		api_key = os.getenv('OPENAI_API_KEY', 'key')
+		base_url = os.getenv('OPENAI_BASE_URL', 'http://192.168.0.120:1234/v1')
+		return ChatOpenAI(model=model, api_key=api_key, base_url=base_url)
 
 	# Azure OpenAI Models
 	elif provider == 'azure':
+		if 'gpt_4_1_mini' in model_part:
+			model = model_part.replace('gpt_4_1_mini', 'gpt-4.1-mini')
+		elif 'gpt_4o_mini' in model_part:
+			model = model_part.replace('gpt_4o_mini', 'gpt-4o-mini')
+		elif 'gpt_4o' in model_part:
+			model = model_part.replace('gpt_4o', 'gpt-4o')
+		elif 'gpt_5' in model_part:
+			model = model_part.replace('gpt_5', 'gpt-5').replace('_', '-')
+		elif 'o1_pro' in model_part:
+			model = model_part.replace('o1_pro', 'o1-pro')
+		elif 'o1_mini' in model_part:
+			model = model_part.replace('o1_mini', 'o1-mini')
+		elif 'o1' in model_part:
+			model = model_part.replace('o1', 'o1')
+		elif 'o3_pro' in model_part:
+			model = model_part.replace('o3_pro', 'o3-pro')
+		elif 'o3_mini' in model_part:
+			model = model_part.replace('o3_mini', 'o3-mini')
+		elif 'o3' in model_part:
+			model = model_part.replace('o3', 'o3')
+		else:
+			model = model_part.replace('_', '-')
+		
 		api_key = os.getenv('AZURE_OPENAI_KEY') or os.getenv('AZURE_OPENAI_API_KEY')
 		azure_endpoint = os.getenv('AZURE_OPENAI_ENDPOINT')
 		return ChatAzureOpenAI(model=model, api_key=api_key, azure_endpoint=azure_endpoint)
 
 	# Google Models
 	elif provider == 'google':
-		api_key = os.getenv('GOOGLE_API_KEY')
-		return ChatGoogle(model=model, api_key=api_key)
+		if 'gemini_2_0' in model_part:
+			model = model_part.replace('gemini_2_0', 'gemini-2.0').replace('_', '-')
+		elif 'gemini_2_5' in model_part:
+			model = model_part.replace('gemini_2_5', 'gemini-2.5').replace('_', '-')
+		else:
+			model = model_part.replace('_', '-')
+		
+		api_key = os.getenv('GOOGLE_API_KEY', 'key')
+		base_url = os.getenv('GOOGLE_BASE_URL', 'http://192.168.0.120:1234/v1')
+		return ChatGoogle(model=model, api_key=api_key, base_url=base_url)
 
 	# Mistral Models
 	elif provider == 'mistral':
@@ -189,7 +215,7 @@ def get_llm_by_name(model_name: str):
 			'pixtral-large': 'pixtral-large-latest',
 		}
 		normalized_model_part = model_part.replace('_', '-')
-		resolved_model = mistral_map.get(normalized_model_part, model.replace('_', '-'))
+		resolved_model = mistral_map.get(normalized_model_part, model_part.replace('_', '-'))
 		return ChatMistral(model=resolved_model, api_key=api_key, base_url=base_url)
 
 	# OCI Models
@@ -200,18 +226,62 @@ def get_llm_by_name(model_name: str):
 
 	# Cerebras Models
 	elif provider == 'cerebras':
+		if 'llama3_1' in model_part:
+			model = model_part.replace('llama3_1', 'llama3.1').replace('_', '-')
+		elif 'llama3_3' in model_part:
+			model = model_part.replace('llama3_3', 'llama-3.3').replace('_', '-')
+		elif 'llama_4_scout' in model_part:
+			model = model_part.replace('llama_4_scout', 'llama-4-scout').replace('_', '-')
+		elif 'llama_4_maverick' in model_part:
+			model = model_part.replace('llama_4_maverick', 'llama-4-maverick').replace('_', '-')
+		elif 'gpt_oss_120b' in model_part:
+			model = model_part.replace('gpt_oss_120b', 'gpt-oss-120b')
+		elif 'qwen_3_32b' in model_part:
+			model = model_part.replace('qwen_3_32b', 'qwen-3-32b')
+		elif 'qwen_3_235b_a22b_instruct' in model_part:
+			if model_part.endswith('_2507'):
+				model = model_part.replace('qwen_3_235b_a22b_instruct_2507', 'qwen-3-235b-a22b-instruct-2507')
+			else:
+				model = model_part.replace('qwen_3_235b_a22b_instruct', 'qwen-3-235b-a22b-instruct-2507')
+		elif 'qwen_3_235b_a22b_thinking' in model_part:
+			if model_part.endswith('_2507'):
+				model = model_part.replace('qwen_3_235b_a22b_thinking_2507', 'qwen-3-235b-a22b-thinking-2507')
+			else:
+				model = model_part.replace('qwen_3_235b_a22b_thinking', 'qwen-3-235b-a22b-thinking-2507')
+		elif 'qwen_3_coder_480b' in model_part:
+			model = model_part.replace('qwen_3_coder_480b', 'qwen-3-coder-480b')
+		else:
+			model = model_part.replace('_', '-')
+		
 		api_key = os.getenv('CEREBRAS_API_KEY')
-		return ChatCerebras(model=model, api_key=api_key)
+		base_url = os.getenv('CEREBRAS_BASE_URL')
+		return ChatCerebras(model=model, api_key=api_key, base_url=base_url)
 
 	# Browser Use Models
 	elif provider == 'bu':
 		# Handle bu_latest -> bu-latest conversion (need to prepend 'bu-' back)
 		model = f'bu-{model_part.replace("_", "-")}'
-		api_key = os.getenv('BROWSER_USE_API_KEY')
-		return ChatBrowserUse(model=model, api_key=api_key)
+		api_key = os.getenv('BROWSER_USE_API_KEY', 'key')
+		base_url = os.getenv('BROWSER_USE_BASE_URL', 'http://192.168.0.120:1234/v1')
+		return ChatBrowserUse(model=model, api_key=api_key, base_url=base_url)
+
+	# Local LLM Models (e.g., LM Studio, Ollama, LocalAI)
+	elif provider == 'local':
+		# Local models use the model name directly
+		model_map = {
+			'qwen3_6_35b': 'qwen/qwen3.6-35b-a3b',
+			'qwen3_6_27b': 'qwen/qwen3.6-27b',
+			'nemotron_3_nano_omni': 'nvidia/nemotron-3-nano-omni',
+			'gemma_4_26b': 'google/gemma-4-26b-a4b',
+		}
+		model = model_map.get(model_part, model_part.replace('_', '-'))
+		
+		api_key = os.getenv('LOCAL_API_KEY', 'not-needed')
+		base_url = os.getenv('LOCAL_BASE_URL', 'http://127.0.0.1:1234/v1')
+		return ChatOpenAI(model=model, api_key=api_key, base_url=base_url)
 
 	else:
-		available_providers = ['openai', 'azure', 'google', 'oci', 'cerebras', 'bu']
+		available_providers = ['openai', 'azure', 'google', 'oci', 'cerebras', 'bu', 'local']
 
 		raise ValueError(f"Unknown provider: '{provider}'. Available providers: {', '.join(available_providers)}")
 
@@ -313,6 +383,11 @@ __all__ += [
 	'bu_latest',
 	'bu_1_0',
 	'bu_2_0',
+	# Local LLM instances - created on demand
+	'local_qwen3_6_35b',
+	'local_qwen3_6_27b',
+	'local_nemotron_3_nano_omni',
+	'local_gemma_4_26b',
 ]
 
 # NOTE: OCI backend is optional. The try/except ImportError and conditional __all__ are required

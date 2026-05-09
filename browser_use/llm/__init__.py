@@ -100,6 +100,13 @@ _LAZY_IMPORTS = {
 _model_cache: dict[str, 'BaseChatModel'] = {}
 
 
+def get_llm_by_name(model_name: str):
+	"""Factory function to create LLM instances from string names."""
+	from browser_use.llm.models import get_llm_by_name as _get_llm_by_name
+
+	return _get_llm_by_name(model_name)
+
+
 def __getattr__(name: str):
 	"""Lazy import mechanism for heavy chat model imports and model instances."""
 	if name in _LAZY_IMPORTS:
@@ -158,4 +165,6 @@ __all__ = [
 	'ChatOpenRouter',
 	'ChatVercel',
 	'ChatCerebras',
+	# Factory function
+	'get_llm_by_name',
 ]
