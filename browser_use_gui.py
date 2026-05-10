@@ -64,6 +64,7 @@ class BrowserUseGUI:
             'headless': os.getenv('BU_HEADLESS', 'false').lower() == 'true',
             'max_steps': int(os.getenv('BU_MAX_STEPS', '100')),
             'cdp_url': os.getenv('BU_CDP_URL', ''),
+            'llm_timeout': int(os.getenv('BU_LLM_TIMEOUT', '60')),
         }
 
     def _save_env_config(self):
@@ -100,6 +101,7 @@ BU_MODEL_NAME={self.provider_model_name()}
 BU_HEADLESS={'true' if self.config.get('headless', False) else 'false'}
 BU_MAX_STEPS={self.config.get('max_steps', 100)}
 BU_CDP_URL={self.config.get('cdp_url', '')}
+BU_LLM_TIMEOUT={self.config.get('llm_timeout', 60)}
 """
         env_path.write_text(env_content, encoding='utf-8')
 
@@ -111,6 +113,7 @@ BU_CDP_URL={self.config.get('cdp_url', '')}
         os.environ['BU_HEADLESS'] = 'true' if self.config.get('headless', False) else 'false'
         os.environ['BU_MAX_STEPS'] = str(self.config.get('max_steps', 100))
         os.environ['BU_CDP_URL'] = self.config.get('cdp_url', '')
+        os.environ['BU_LLM_TIMEOUT'] = str(self.config.get('llm_timeout', 60))
 
     def provider_model_name(self):
         """根据提供商获取默认模型名称。"""
@@ -421,8 +424,13 @@ BU_CDP_URL={self.config.get('cdp_url', '')}
         self.max_steps_var = tk.StringVar(value=str(self.config['max_steps']))
         ttk.Entry(model_frame, textvariable=self.max_steps_var, width=50).grid(row=1, column=1, padx=5, pady=5, sticky=tk.W)
 
+        ttk.Label(model_frame, text="LLM超时(秒):").grid(row=2, column=0, sticky=tk.W, pady=5, padx=5)
+        self.llm_timeout_var = tk.StringVar(value=str(self.config['llm_timeout']))
+        ttk.Entry(model_frame, textvariable=self.llm_timeout_var, width=50).grid(row=2, column=1, padx=5, pady=5, sticky=tk.W)
+        ttk.Label(model_frame, text="LLM调用超时时间，默认60秒，本地模型可适当增加", foreground='gray').grid(row=3, column=0, columnspan=2, sticky=tk.W, padx=5)
+
         self.headless_var = tk.BooleanVar(value=self.config['headless'])
-        ttk.Checkbutton(model_frame, text="无头模式（不显示浏览器窗口）", variable=self.headless_var).grid(row=2, column=0, columnspan=2, sticky=tk.W, pady=5, padx=5)
+        ttk.Checkbutton(model_frame, text="无头模式（不显示浏览器窗口）", variable=self.headless_var).grid(row=4, column=0, columnspan=2, sticky=tk.W, pady=5, padx=5)
 
         # 浏览器配置区域
         browser_config_frame = ttk.LabelFrame(self.config_tab, text="浏览器高级配置", padding="10")
@@ -597,6 +605,15 @@ BU_CDP_URL={self.config.get('cdp_url', '')}
 
     def _on_save_config(self):
         """保存配置。"""
+        # 验证LLM超时时间
+        try:
+            llm_timeout = int(self.llm_timeout_var.get().strip())
+            if llm_timeout <= 0:
+                raise ValueError("超时时间必须大于0")
+        except ValueError:
+            messagebox.showwarning("警告", "请输入有效的正整数作为LLM超时时间")
+            return
+        
         self.config.update({
             'provider': self.provider_var.get().strip(),
             'api_key': self.api_key_var.get().strip(),
@@ -605,6 +622,7 @@ BU_CDP_URL={self.config.get('cdp_url', '')}
             'max_steps': int(self.max_steps_var.get()),
             'headless': self.headless_var.get(),
             'cdp_url': self.cdp_url_var.get().strip(),
+            'llm_timeout': llm_timeout,
         })
 
         try:
@@ -657,6 +675,7 @@ BU_CDP_URL={self.config.get('cdp_url', '')}
             self._append_output(f"开始任务: {task}", 'info')
             self._append_output(f"模型: {self.config['model_name']}", 'info')
             self._append_output(f"最大步数: {task_max_steps}", 'info')
+            self._append_output(f"LLM超时: {self.config['llm_timeout']}秒", 'info')
             self._append_output(f"时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", 'info')
             self._append_output(f"{'=' * 60}\n", 'info')
 
@@ -719,11 +738,12 @@ BU_CDP_URL={self.config.get('cdp_url', '')}
 
             self._append_output("浏览器初始化完成", 'info')
 
-            # 创建agent
+            # 创建agent，使用配置中的llm_timeout
             self.agent = Agent(
                 task=task,
                 llm=llm,
                 browser=browser,
+                llm_timeout=self.config['llm_timeout'],
             )
 
             self._append_output("Agent创建完成，开始执行任务...\n", 'info')
