@@ -57,14 +57,9 @@ class BrowserUseGUI:
             dotenv.load_dotenv(env_path)
 
         self.config = {
-            'api_key': os.getenv('BROWSER_USE_API_KEY', ''),
-            'base_url': os.getenv('BROWSER_USE_BASE_URL', ''),
-            'openai_api_key': os.getenv('OPENAI_API_KEY', ''),
-            'openai_base_url': os.getenv('OPENAI_BASE_URL', ''),
-            'google_api_key': os.getenv('GOOGLE_API_KEY', ''),
-            'google_base_url': os.getenv('GOOGLE_BASE_URL', ''),
-            'local_api_key': os.getenv('LOCAL_API_KEY', 'key'),
-            'local_base_url': os.getenv('LOCAL_BASE_URL', 'http://192.168.0.120:1234/v1'),
+            'provider': os.getenv('BU_PROVIDER', 'local').lower(),
+            'api_key': os.getenv('BU_API_KEY', 'key'),
+            'base_url': os.getenv('BU_BASE_URL', 'http://192.168.0.120:1234/v1'),
             'model_name': os.getenv('BU_MODEL_NAME', 'local_gemma_4_26b'),
             'headless': os.getenv('BU_HEADLESS', 'false').lower() == 'true',
             'max_steps': int(os.getenv('BU_MAX_STEPS', '100')),
@@ -74,77 +69,59 @@ class BrowserUseGUI:
     def _save_env_config(self):
         """保存配置到.env文件。"""
         env_path = Path(__file__).parent / '.env'
+        provider = self.config.get('provider', 'local')
         env_content = f"""# Browser Use Configuration
 BROWSER_USE_LOGGING_LEVEL=info
 ANONYMIZED_TELEMETRY=true
 BROWSER_USE_VERSION_CHECK=true
 
 # ============================================
-# API配置 - 根据需要填写对应的API Key
+# 大模型配置（统一配置）
 # ============================================
-
-# Browser-Use Cloud API (推荐)
-# 获取地址: https://cloud.browser-use.com/new-api-key
-BROWSER_USE_API_KEY={self.config.get('api_key', '')}
-# 自定义Base URL (可选，用于代理或本地部署)
-BROWSER_USE_BASE_URL={self.config.get('base_url', '')}
-
-# OpenAI API
-# 获取地址: https://platform.openai.com/api-keys
-OPENAI_API_KEY={self.config.get('openai_api_key', '')}
-# 自定义Base URL (可选，用于OneAPI/NewAPI等中转服务)
-# 例如: http://localhost:3000/v1 或 https://api.openai-proxy.com/v1
-OPENAI_BASE_URL={self.config.get('openai_base_url', '')}
-
-# Google Gemini API
-# 获取地址: https://aistudio.google.com/app/apikey
-GOOGLE_API_KEY={self.config.get('google_api_key', '')}
-# 自定义Base URL (可选)
-GOOGLE_BASE_URL={self.config.get('google_base_url', '')}
-
-# 本地大模型 API (LM Studio, Ollama, LocalAI等)
-# 默认地址: http://127.0.0.1:1234/v1
-LOCAL_API_KEY={self.config.get('local_api_key', '')}
-LOCAL_BASE_URL={self.config.get('local_base_url', 'http://127.0.0.1:1234/v1')}
+# 提供商: openai, google, bu, local
+BU_PROVIDER={self.config.get('provider', 'local')}
+# API Key
+BU_API_KEY={self.config.get('api_key', 'key')}
+# Base URL (默认: http://192.168.0.120:1234/v1)
+BU_BASE_URL={self.config.get('base_url', 'http://192.168.0.120:1234/v1')}
 
 # ============================================
-# 模型配置
+# 模型名称
 # ============================================
-# 可用模型: bu_latest, bu_1_0, bu_2_0
-#          openai_gpt_4o, openai_gpt_4o_mini, openai_gpt_4_1_mini
-#          openai_o1, openai_o1_mini, openai_o3, openai_o3_mini
-#          openai_gpt_5, openai_gpt_5_mini
-#          azure_gpt_4o, azure_gpt_4_1_mini
-#          google_gemini_2_5_pro, google_gemini_2_5_flash
-BU_MODEL_NAME={self.config.get('model_name', 'bu_latest')}
+# openai: gpt_4o, gpt_4o_mini, gpt_4_1_mini, gpt_5
+# google: gemini_2_5_pro, gemini_2_5_flash
+# bu: bu_latest
+# local: qwen3_6_35b, qwen3_6_27b, nemotron_3_nano_omni, gemma_4_26b
+BU_MODEL_NAME={self.provider_model_name()}
 
 # ============================================
 # 浏览器配置
 # ============================================
-# 无头模式: true=不显示浏览器窗口, false=显示浏览器窗口
 BU_HEADLESS={'true' if self.config.get('headless', False) else 'false'}
-
-# 最大执行步数
 BU_MAX_STEPS={self.config.get('max_steps', 100)}
-
-# CDP URL (可选，连接到已运行的浏览器)
 BU_CDP_URL={self.config.get('cdp_url', '')}
 """
         env_path.write_text(env_content, encoding='utf-8')
 
-        # 同时更新环境变量
-        os.environ['BROWSER_USE_API_KEY'] = self.config.get('api_key', '')
-        os.environ['BROWSER_USE_BASE_URL'] = self.config.get('base_url', '')
-        os.environ['OPENAI_API_KEY'] = self.config.get('openai_api_key', '')
-        os.environ['OPENAI_BASE_URL'] = self.config.get('openai_base_url', '')
-        os.environ['GOOGLE_API_KEY'] = self.config.get('google_api_key', '')
-        os.environ['GOOGLE_BASE_URL'] = self.config.get('google_base_url', '')
-        os.environ['LOCAL_API_KEY'] = self.config.get('local_api_key', '')
-        os.environ['LOCAL_BASE_URL'] = self.config.get('local_base_url', 'http://127.0.0.1:1234/v1')
-        os.environ['BU_MODEL_NAME'] = self.config.get('model_name', 'bu_latest')
+        # 更新环境变量
+        os.environ['BU_PROVIDER'] = self.config.get('provider', 'local')
+        os.environ['BU_API_KEY'] = self.config.get('api_key', 'key')
+        os.environ['BU_BASE_URL'] = self.config.get('base_url', 'http://192.168.0.120:1234/v1')
+        os.environ['BU_MODEL_NAME'] = self.provider_model_name()
         os.environ['BU_HEADLESS'] = 'true' if self.config.get('headless', False) else 'false'
         os.environ['BU_MAX_STEPS'] = str(self.config.get('max_steps', 100))
         os.environ['BU_CDP_URL'] = self.config.get('cdp_url', '')
+
+    def provider_model_name(self):
+        """根据提供商获取默认模型名称。"""
+        provider = self.config.get('provider', 'local')
+        model_map = {
+            'openai': 'openai_gpt_4o',
+            'google': 'google_gemini_2_5_flash',
+            'bu': 'bu_latest',
+            'local': 'local_gemma_4_26b',
+        }
+        return model_map.get(provider, 'local_gemma_4_26b')
 
     def _detect_browser(self):
         """检测可用的浏览器（内置Chromium、系统Chrome/Edge、Playwright Chromium）。"""
@@ -392,68 +369,53 @@ BU_CDP_URL={self.config.get('cdp_url', '')}
         )
         self.install_chromium_btn.pack(side=tk.LEFT)
 
-        # API配置区域
-        api_frame = ttk.LabelFrame(self.config_tab, text="API配置", padding="10")
-        api_frame.pack(fill=tk.X, padx=10, pady=5)
+        # 大模型配置区域（统一配置）
+        llm_frame = ttk.LabelFrame(self.config_tab, text="大模型配置", padding="10")
+        llm_frame.pack(fill=tk.X, padx=10, pady=5)
 
-        # Browser-Use API
-        ttk.Label(api_frame, text="Browser-Use API Key:").grid(row=0, column=0, sticky=tk.W, pady=5, padx=5)
+        # 提供商选择
+        ttk.Label(llm_frame, text="提供商:").grid(row=0, column=0, sticky=tk.W, pady=5, padx=5)
+        self.provider_var = tk.StringVar(value=self.config['provider'])
+        provider_combo = ttk.Combobox(
+            llm_frame,
+            textvariable=self.provider_var,
+            width=47,
+            values=['local', 'openai', 'google', 'bu'],
+            state='readonly',
+        )
+        provider_combo.grid(row=0, column=1, padx=5, pady=5, sticky=tk.W)
+        provider_combo.bind('<<ComboboxSelected>>', self._on_provider_change)
+
+        # API Key
+        ttk.Label(llm_frame, text="API Key:").grid(row=1, column=0, sticky=tk.W, pady=5, padx=5)
         self.api_key_var = tk.StringVar(value=self.config['api_key'])
-        ttk.Entry(api_frame, textvariable=self.api_key_var, width=50, show='*').grid(row=0, column=1, padx=5, pady=5, sticky=tk.W)
+        self.api_key_entry = ttk.Entry(llm_frame, textvariable=self.api_key_var, width=50, show='*')
+        self.api_key_entry.grid(row=1, column=1, padx=5, pady=5, sticky=tk.W)
 
-        ttk.Label(api_frame, text="Browser-Use Base URL:").grid(row=1, column=0, sticky=tk.W, pady=5, padx=5)
+        # Base URL
+        ttk.Label(llm_frame, text="Base URL:").grid(row=2, column=0, sticky=tk.W, pady=5, padx=5)
         self.base_url_var = tk.StringVar(value=self.config['base_url'])
-        ttk.Entry(api_frame, textvariable=self.base_url_var, width=50).grid(row=1, column=1, padx=5, pady=5, sticky=tk.W)
+        self.base_url_entry = ttk.Entry(llm_frame, textvariable=self.base_url_var, width=50)
+        self.base_url_entry.grid(row=2, column=1, padx=5, pady=5, sticky=tk.W)
 
-        # OpenAI API
-        ttk.Label(api_frame, text="OpenAI API Key:").grid(row=2, column=0, sticky=tk.W, pady=5, padx=5)
-        self.openai_api_key_var = tk.StringVar(value=self.config['openai_api_key'])
-        ttk.Entry(api_frame, textvariable=self.openai_api_key_var, width=50, show='*').grid(row=2, column=1, padx=5, pady=5, sticky=tk.W)
-
-        ttk.Label(api_frame, text="OpenAI Base URL:").grid(row=3, column=0, sticky=tk.W, pady=5, padx=5)
-        self.openai_base_url_var = tk.StringVar(value=self.config['openai_base_url'])
-        ttk.Entry(api_frame, textvariable=self.openai_base_url_var, width=50).grid(row=3, column=1, padx=5, pady=5, sticky=tk.W)
-
-        # Google API
-        ttk.Label(api_frame, text="Google API Key:").grid(row=4, column=0, sticky=tk.W, pady=5, padx=5)
-        self.google_api_key_var = tk.StringVar(value=self.config['google_api_key'])
-        ttk.Entry(api_frame, textvariable=self.google_api_key_var, width=50, show='*').grid(row=4, column=1, padx=5, pady=5, sticky=tk.W)
-
-        ttk.Label(api_frame, text="Google Base URL:").grid(row=5, column=0, sticky=tk.W, pady=5, padx=5)
-        self.google_base_url_var = tk.StringVar(value=self.config['google_base_url'])
-        ttk.Entry(api_frame, textvariable=self.google_base_url_var, width=50).grid(row=5, column=1, padx=5, pady=5, sticky=tk.W)
-
-        # 本地大模型 API
-        ttk.Label(api_frame, text="本地API Key:").grid(row=6, column=0, sticky=tk.W, pady=5, padx=5)
-        self.local_api_key_var = tk.StringVar(value=self.config['local_api_key'])
-        ttk.Entry(api_frame, textvariable=self.local_api_key_var, width=50, show='*').grid(row=6, column=1, padx=5, pady=5, sticky=tk.W)
-
-        ttk.Label(api_frame, text="本地Base URL:").grid(row=7, column=0, sticky=tk.W, pady=5, padx=5)
-        self.local_base_url_var = tk.StringVar(value=self.config['local_base_url'])
-        ttk.Entry(api_frame, textvariable=self.local_base_url_var, width=50).grid(row=7, column=1, padx=5, pady=5, sticky=tk.W)
-        ttk.Label(api_frame, text="LM Studio/Ollama等本地模型服务地址", foreground='gray').grid(row=8, column=0, columnspan=2, sticky=tk.W, padx=5)
+        # 提示说明
+        self.provider_hint = ttk.Label(llm_frame, text="", foreground='gray')
+        self.provider_hint.grid(row=3, column=0, columnspan=2, sticky=tk.W, padx=5)
+        self._update_provider_hint()
 
         # 模型配置区域
         model_frame = ttk.LabelFrame(self.config_tab, text="模型配置", padding="10")
         model_frame.pack(fill=tk.X, padx=10, pady=5)
 
         ttk.Label(model_frame, text="模型名称:").grid(row=0, column=0, sticky=tk.W, pady=5, padx=5)
-        self.model_name_var = tk.StringVar(value=self.config['model_name'])
-        model_combo = ttk.Combobox(
+        self.model_name_var = tk.StringVar(value=self.provider_model_name())
+        self.model_combo = ttk.Combobox(
             model_frame,
             textvariable=self.model_name_var,
             width=47,
-            values=[
-                'bu_latest', 'bu_1_0', 'bu_2_0',
-                'openai_gpt_4o', 'openai_gpt_4o_mini', 'openai_gpt_4_1_mini',
-                'openai_o1', 'openai_o1_mini', 'openai_o3', 'openai_o3_mini',
-                'openai_gpt_5', 'openai_gpt_5_mini',
-                'azure_gpt_4o', 'azure_gpt_4_1_mini',
-                'google_gemini_2_5_pro', 'google_gemini_2_5_flash',
-                'local_qwen3_6_35b', 'local_qwen3_6_27b', 'local_nemotron_3_nano_omni', 'local_gemma_4_26b',
-            ]
         )
-        model_combo.grid(row=0, column=1, padx=5, pady=5, sticky=tk.W)
+        self.model_combo.grid(row=0, column=1, padx=5, pady=5, sticky=tk.W)
+        self._update_model_list()
 
         ttk.Label(model_frame, text="最大步数:").grid(row=1, column=0, sticky=tk.W, pady=5, padx=5)
         self.max_steps_var = tk.StringVar(value=str(self.config['max_steps']))
@@ -484,6 +446,48 @@ BU_CDP_URL={self.config.get('cdp_url', '')}
         # 连接状态标签
         self.conn_status_label = ttk.Label(self.config_tab, text="", foreground=self.colors['success'])
         self.conn_status_label.pack(pady=(0, 5))
+
+    def _update_model_list(self):
+        """根据提供商更新模型列表。"""
+        provider = self.provider_var.get()
+        model_map = {
+            'local': [
+                'local_gemma_4_26b', 'local_qwen3_6_35b', 'local_qwen3_6_27b',
+                'local_nemotron_3_nano_omni',
+            ],
+            'openai': [
+                'openai_gpt_4o', 'openai_gpt_4o_mini', 'openai_gpt_4_1_mini',
+                'openai_gpt_5', 'openai_gpt_5_mini',
+                'openai_o1', 'openai_o1_mini', 'openai_o3', 'openai_o3_mini',
+            ],
+            'google': [
+                'google_gemini_2_5_pro', 'google_gemini_2_5_flash',
+            ],
+            'bu': [
+                'bu_latest', 'bu_1_0', 'bu_2_0',
+            ],
+        }
+        self.model_combo['values'] = model_map.get(provider, model_map['local'])
+        if not self.model_name_var.get() or self.model_name_var.get() not in model_map.get(provider, []):
+            self.model_name_var.set(model_map.get(provider, ['local_gemma_4_26b'])[0])
+
+    def _update_provider_hint(self):
+        """更新提供商提示说明。"""
+        provider = self.provider_var.get()
+        hints = {
+            'local': '使用 LM Studio/Ollama/LocalAI 等本地模型服务',
+            'openai': '使用 OpenAI API（支持自定义中转地址）',
+            'google': '使用 Google Gemini API',
+            'bu': '使用 Browser-Use Cloud API',
+        }
+        self.provider_hint.config(text=hints.get(provider, ''))
+
+    def _on_provider_change(self, event=None):
+        """提供商切换时更新模型列表和提示。"""
+        self._update_model_list()
+        self._update_provider_hint()
+        # 自动选择默认模型
+        self.model_name_var.set(self.provider_model_name())
 
     def _build_task_tab(self):
         """构建任务执行选项卡。"""
@@ -586,14 +590,9 @@ BU_CDP_URL={self.config.get('cdp_url', '')}
     def _on_save_config(self):
         """保存配置。"""
         self.config.update({
+            'provider': self.provider_var.get().strip(),
             'api_key': self.api_key_var.get().strip(),
             'base_url': self.base_url_var.get().strip(),
-            'openai_api_key': self.openai_api_key_var.get().strip(),
-            'openai_base_url': self.openai_base_url_var.get().strip(),
-            'google_api_key': self.google_api_key_var.get().strip(),
-            'google_base_url': self.google_base_url_var.get().strip(),
-            'local_api_key': self.local_api_key_var.get().strip(),
-            'local_base_url': self.local_base_url_var.get().strip(),
             'model_name': self.model_name_var.get().strip(),
             'max_steps': int(self.max_steps_var.get()),
             'headless': self.headless_var.get(),
@@ -615,8 +614,8 @@ BU_CDP_URL={self.config.get('cdp_url', '')}
             messagebox.showwarning("警告", "请输入任务描述")
             return
 
-        if not self.config.get('api_key') and not self.config.get('openai_api_key') and not self.config.get('google_api_key'):
-            messagebox.showwarning("警告", "请至少配置一个API Key（Browser-Use、OpenAI或Google）")
+        if not self.config.get('api_key'):
+            messagebox.showwarning("警告", "请配置 API Key")
             self.notebook.select(0)  # 切换到配置选项卡
             return
 
@@ -646,6 +645,20 @@ BU_CDP_URL={self.config.get('cdp_url', '')}
             # 动态导入以避免启动时加载
             from browser_use import Agent, Browser
             from browser_use.llm import get_llm_by_name
+
+            # 设置环境变量
+            os.environ['BU_API_KEY'] = self.config.get('api_key', 'key')
+            os.environ['BU_BASE_URL'] = self.config.get('base_url', 'http://192.168.0.120:1234/v1')
+            api_key = self.config.get('api_key', 'key')
+            base_url = self.config.get('base_url', 'http://192.168.0.120:1234/v1')
+            os.environ['OPENAI_API_KEY'] = api_key
+            os.environ['OPENAI_BASE_URL'] = base_url
+            os.environ['GOOGLE_API_KEY'] = api_key
+            os.environ['GOOGLE_BASE_URL'] = base_url
+            os.environ['LOCAL_API_KEY'] = api_key
+            os.environ['LOCAL_BASE_URL'] = base_url
+            os.environ['BROWSER_USE_API_KEY'] = api_key
+            os.environ['BROWSER_USE_BASE_URL'] = base_url
 
             # 创建LLM实例
             model_name = self.config['model_name']
@@ -741,14 +754,9 @@ BU_CDP_URL={self.config.get('cdp_url', '')}
 
         # 先保存当前配置
         self.config.update({
+            'provider': self.provider_var.get().strip(),
             'api_key': self.api_key_var.get().strip(),
             'base_url': self.base_url_var.get().strip(),
-            'openai_api_key': self.openai_api_key_var.get().strip(),
-            'openai_base_url': self.openai_base_url_var.get().strip(),
-            'google_api_key': self.google_api_key_var.get().strip(),
-            'google_base_url': self.google_base_url_var.get().strip(),
-            'local_api_key': self.local_api_key_var.get().strip(),
-            'local_base_url': self.local_base_url_var.get().strip(),
             'model_name': model_name,
             'max_steps': int(self.max_steps_var.get()),
             'headless': self.headless_var.get(),
@@ -772,9 +780,24 @@ BU_CDP_URL={self.config.get('cdp_url', '')}
             self._append_output(f"时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", 'info')
             self._append_output(f"{'=' * 60}", 'info')
 
+            # 设置环境变量，确保 get_llm_by_name 使用当前配置
+            os.environ['BU_API_KEY'] = self.config.get('api_key', 'key')
+            os.environ['BU_BASE_URL'] = self.config.get('base_url', 'http://192.168.0.120:1234/v1')
+
+            # 同时设置各提供商的环境变量
+            api_key = self.config.get('api_key', 'key')
+            base_url = self.config.get('base_url', 'http://192.168.0.120:1234/v1')
+            os.environ['OPENAI_API_KEY'] = api_key
+            os.environ['OPENAI_BASE_URL'] = base_url
+            os.environ['GOOGLE_API_KEY'] = api_key
+            os.environ['GOOGLE_BASE_URL'] = base_url
+            os.environ['LOCAL_API_KEY'] = api_key
+            os.environ['LOCAL_BASE_URL'] = base_url
+            os.environ['BROWSER_USE_API_KEY'] = api_key
+            os.environ['BROWSER_USE_BASE_URL'] = base_url
+
             # 动态导入
             from browser_use.llm import get_llm_by_name
-            from browser_use.llm.base import BaseChatModel
 
             # 创建LLM实例
             llm = get_llm_by_name(model_name)
