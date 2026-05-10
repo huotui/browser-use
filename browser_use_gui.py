@@ -498,6 +498,14 @@ BU_CDP_URL={self.config.get('cdp_url', '')}
         ttk.Label(task_frame, text="任务描述:").pack(anchor=tk.W)
         self.task_text = scrolledtext.ScrolledText(task_frame, height=5, wrap=tk.WORD, font=('Consolas', 10))
         self.task_text.pack(fill=tk.X, pady=5)
+        
+        # 最大步数配置
+        steps_frame = ttk.Frame(task_frame)
+        steps_frame.pack(fill=tk.X, pady=5)
+        ttk.Label(steps_frame, text="最大步数:").pack(side=tk.LEFT, padx=(0, 5))
+        self.task_max_steps_var = tk.StringVar(value=str(self.config['max_steps']))
+        ttk.Entry(steps_frame, textvariable=self.task_max_steps_var, width=15).pack(side=tk.LEFT, padx=5)
+        ttk.Label(steps_frame, text="(每次运行任务可独立设置，不影响默认配置)", foreground='gray').pack(side=tk.LEFT, padx=5)
 
         # 控制按钮
         btn_frame = ttk.Frame(task_frame)
@@ -613,6 +621,15 @@ BU_CDP_URL={self.config.get('cdp_url', '')}
         if not task:
             messagebox.showwarning("警告", "请输入任务描述")
             return
+        
+        # 读取任务级别的max_steps
+        try:
+            task_max_steps = int(self.task_max_steps_var.get().strip())
+            if task_max_steps <= 0:
+                raise ValueError("步数必须大于0")
+        except ValueError:
+            messagebox.showwarning("警告", "请输入有效的正整数作为最大步数")
+            return
 
         if not self.config.get('api_key'):
             messagebox.showwarning("警告", "请配置 API Key")
@@ -626,10 +643,10 @@ BU_CDP_URL={self.config.get('cdp_url', '')}
         self.status_label.config(text="任务运行中...")
 
         # 在新线程中运行任务
-        self.task_thread = threading.Thread(target=self._run_task_async, args=(task,), daemon=True)
+        self.task_thread = threading.Thread(target=self._run_task_async, args=(task, task_max_steps), daemon=True)
         self.task_thread.start()
 
-    def _run_task_async(self, task: str):
+    def _run_task_async(self, task: str, task_max_steps: int):
         """在后台线程中运行异步任务。"""
         try:
             # 创建新的事件循环
@@ -639,6 +656,7 @@ BU_CDP_URL={self.config.get('cdp_url', '')}
             self._append_output(f"\n{'=' * 60}", 'info')
             self._append_output(f"开始任务: {task}", 'info')
             self._append_output(f"模型: {self.config['model_name']}", 'info')
+            self._append_output(f"最大步数: {task_max_steps}", 'info')
             self._append_output(f"时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", 'info')
             self._append_output(f"{'=' * 60}\n", 'info')
 
@@ -710,8 +728,8 @@ BU_CDP_URL={self.config.get('cdp_url', '')}
 
             self._append_output("Agent创建完成，开始执行任务...\n", 'info')
 
-            # 运行任务
-            result = self.loop.run_until_complete(self.agent.run(max_steps=self.config['max_steps']))
+            # 运行任务，使用任务界面输入的独立max_steps
+            result = self.loop.run_until_complete(self.agent.run(max_steps=task_max_steps))
 
             # 处理结果
             self._append_output(f"\n{'=' * 60}", 'success')
