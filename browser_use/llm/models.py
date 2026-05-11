@@ -124,7 +124,11 @@ def get_llm_by_name(model_name: str):
 	# Parse model name
 	parts = model_name.split('_', 1)
 	if len(parts) < 2:
-		raise ValueError(f"Invalid model name format: '{model_name}'. Expected format: 'provider_model_name'")
+		# If model name doesn't contain underscore, treat it as a local model
+		# This allows direct input of model names like 'nvidia/nemotron-3-nano-omni'
+		api_key = os.getenv('LOCAL_API_KEY', 'not-needed')
+		base_url = os.getenv('LOCAL_BASE_URL', 'http://127.0.0.1:1234/v1')
+		return ChatOpenAI(model=model_name, api_key=api_key, base_url=base_url)
 
 	provider = parts[0]
 	model_part = parts[1]

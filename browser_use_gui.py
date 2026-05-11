@@ -416,6 +416,7 @@ BU_LLM_TIMEOUT={self.config.get('llm_timeout', 60)}
             model_frame,
             textvariable=self.model_name_var,
             width=47,
+            state='normal',
         )
         self.model_combo.grid(row=0, column=1, padx=5, pady=5, sticky=tk.W)
         self._update_model_list()
